@@ -1,4 +1,5 @@
 package com.example.chat.service;
+import com.example.chat.api.model.User;
 import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 
@@ -29,7 +30,14 @@ import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Localpart;
 import org.jxmpp.jid.parts.Resourcepart;
-
+import org.jivesoftware.smackx.search.UserSearchManager;
+import org.jivesoftware.smackx.search.ReportedData;
+//import org.jivesoftware.smackx.xdata.DataForm;
+import org.jivesoftware.smackx.xdata.Form;
+import org.jivesoftware.smackx.disco.ServiceDiscoveryManager;
+import org.jivesoftware.smackx.disco.packet.DiscoverItems;
+import org.springframework.stereotype.Service;
+import org.jxmpp.jid.Jid;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -441,40 +449,67 @@ public class Connection {
      * This method prints out the whole roster of a user.
      * @return string containing the result of the roster.
      */
-    public String getRoster() {
-        // ChatGPT showed me a basic roster traversal which I built upon.
+    public List<User> getRoster() {
+        List<User> userList = new ArrayList<>();
+
         try {
             roster = Roster.getInstanceFor(connection);
             roster.reloadAndWait();
-            String result = "";
-            // We iterate the roster and show the details of each contact
-            for (RosterEntry entry : roster.getEntries()) {
-                if (entry.getName() != null) {
-                    result += entry.getName() + " (" + entry.getUser() + ")\n";
-                }
-                else {
-                    result += " - " + " (" + entry.getUser() + ")\n";
-                }
 
-                BareJid userJid = JidCreate.bareFrom(entry.getUser());
-                Presence presence = roster.getPresence(userJid);
-                if (presence.isAvailable()) {
-                    result += "   * Status: Online\n";
-                } else {
-                    result += "   * Status: Offline\n";
-                }
-                result += "   * Mode: " + presence.getMode() + "\n";
+            for (RosterEntry entry : roster.getEntries()) {
+                String name = (entry.getName() != null) ? entry.getName() : entry.getUser();
+                String userJid = entry.getUser();
+                BareJid jid = JidCreate.bareFrom(userJid);
+                Presence presence = roster.getPresence(jid);
+
+                String status = presence.isAvailable() ? "Online" : "Offline";
+                String mode = (presence.getMode() != null) ? presence.getMode().name() : "none";
                 String statusMessage = (presence.getStatus() != null) ? presence.getStatus() : "none";
-                result += "   * Status Message: " + statusMessage + "\n";
-                for (RosterGroup group : entry.getGroups()) {
-                    result += "   - Group: " + group.getName() + "\n";
-                }
+
+                User user = new User(name, userJid, status, mode, statusMessage);
+                userList.add(user);
             }
-            return result;
         } catch (Exception e) {
-            // e.printStackTrace();
-            return "";
+            e.printStackTrace();
         }
+
+        return userList;
+    }
+
+
+    public List<String> searchUsers(String searchTerm) {
+        List<String> users = new ArrayList<>();
+        try {
+            UserSearchManager searchManager = new UserSearchManager(connection);
+            String searchService = "search." + connection.getXMPPServiceDomain();
+            DataForm searchForm = searchManager.getSearchForm(searchService);
+            DataForm answerForm = searchForm.createAnswerForm();
+            answerForm.setAnswer("user", searchTerm);
+            ReportedData data = searchManager.getSearchResults(answerForm, searchService);
+
+            for (ReportedData.Row row : data.getRows()) {
+                String jid = row.getValues("jid").get(0).toString();
+                users.add(jid);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return users;
+    }
+
+    public List<String> discoverServices() {
+        List<String> services = new ArrayList<>();
+        try {
+            ServiceDiscoveryManager discoManager = ServiceDiscoveryManager.getInstanceFor(connection);
+            DiscoverItems items = discoManager.discoverItems(connection.getXMPPServiceDomain());
+
+            for (DiscoverItems.Item item : items.getItems()) {
+                services.add(item.getEntityID().toString());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return services;
     }
 
     /**
