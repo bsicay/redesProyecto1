@@ -447,11 +447,10 @@ public class Connection {
             roster = Roster.getInstanceFor(connection);
             roster.reloadAndWait();
             String result = "";
-            result += "Contactos:\n";
             // We iterate the roster and show the details of each contact
             for (RosterEntry entry : roster.getEntries()) {
                 if (entry.getName() != null) {
-                    result += " - " + entry.getName() + " (" + entry.getUser() + ")\n";
+                    result += entry.getName() + " (" + entry.getUser() + ")\n";
                 }
                 else {
                     result += " - " + " (" + entry.getUser() + ")\n";

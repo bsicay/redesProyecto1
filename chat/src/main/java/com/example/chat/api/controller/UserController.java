@@ -36,5 +36,13 @@ public class UserController {
         }
     }
 
-    // Otros endpoints para registro, acciones después de autorización, etc.
-}
+    @GetMapping("/roster")
+    public ResponseEntity<String> getRoster() {
+        String roster = connection.getRoster();
+        if (!roster.isEmpty()) {
+            return new ResponseEntity<>(roster, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("No se pudo obtener el roster o el roster está vacío.", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+}  
