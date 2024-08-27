@@ -1,3 +1,4 @@
+import 'package:chat_xmpp/screens/groups_screen.dart';
 import 'package:chat_xmpp/screens/search_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:chat_xmpp/widgets/category_selector.dart';
@@ -17,13 +18,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ChatClient _chatClient = ChatClient();
   List<User> userData = [];
-  // User userData = User(
-  //     name: '',
-  //     userJid: '',
-  //     status: '',
-  //     mode: '',
-  //     imageUrl: '',
-  //     statusMessage: '');
+  final List<String> categories = ['Messages', 'Groups', 'Requests'];
+  int selectedIndex = 0;
 
   @override
   void initState() {
@@ -154,7 +150,40 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: <Widget>[
-          CategorySelector(),
+          Container(
+            height: 90.0,
+            color: Theme.of(context).primaryColor,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              itemBuilder: (BuildContext context, int index) {
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedIndex = index;
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 20.0,
+                      vertical: 30.0,
+                    ),
+                    child: Text(
+                      categories[index],
+                      style: TextStyle(
+                        color: index == selectedIndex
+                            ? Colors.white
+                            : Colors.white60,
+                        fontSize: 20.0,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -164,9 +193,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   topRight: Radius.circular(30.0),
                 ),
               ),
-              child: Column(
+              child: IndexedStack(
+                index: selectedIndex,
                 children: <Widget>[
                   FavoriteContacts(userData: userData),
+                  GroupScreen(),
+                  Center(child: Text('Requests')),
                 ],
               ),
             ),

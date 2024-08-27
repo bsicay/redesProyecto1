@@ -160,6 +160,86 @@ public class UserController {
         }
     }
 
+    @PostMapping("/createGroupChat")
+    public ResponseEntity<String> createGroupChat(@RequestParam String username,
+                                                  @RequestParam String chatRoomName,
+                                                  @RequestParam String nickname) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            connection.createGroupChat(chatRoomName, nickname);
+            return new ResponseEntity<>("Group chat created successfully", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Failed to create group chat", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @PostMapping("/inviteToGroupChat")
+    public ResponseEntity<String> inviteToGroupChat(@RequestParam String username,
+                                                    @RequestParam String groupName,
+                                                    @RequestParam String user) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            connection.inviteToGroupChat(groupName, user);
+            return new ResponseEntity<>("User invited to group chat successfully", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Failed to invite user to group chat", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @PostMapping("/joinGroupChat")
+    public ResponseEntity<String> joinGroupChat(@RequestParam String username,
+                                                @RequestParam String chatRoomName,
+                                                @RequestParam String nickname) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            connection.joinGroupChat(chatRoomName, nickname);
+            return new ResponseEntity<>("Joined group chat successfully", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Failed to join group chat", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+
+
+    @PostMapping("/useGroupChat")
+    public ResponseEntity<List<String>> useGroupChat(@RequestParam String username,
+                                                     @RequestParam String chatRoomName) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            List<String> messageHistory = connection.getGroupChatHistory(chatRoomName);
+            return new ResponseEntity<>(messageHistory, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @PostMapping("/sendGroupMessage")
+    public ResponseEntity<String> sendGroupMessage(@RequestParam String username,
+                                                   @RequestParam String chatRoomName,
+                                                   @RequestParam String message) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            connection.sendGroupMessage(chatRoomName, message);
+            return new ResponseEntity<>("Message sent successfully", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Failed to send message", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+
+
+//    @PostMapping("/useGroupChat")
+//    public ResponseEntity<String> useGroupChat(@RequestParam String username,
+//                                               @RequestParam String chatRoomName) {
+//        Connection connection = sessionManager.getConnection(username);
+//        if (connection != null) {
+//            connection.useGroupChat(chatRoomName);
+//            return new ResponseEntity<>("Using group chat", HttpStatus.OK);
+//        } else {
+//            return new ResponseEntity<>("Failed to use group chat", HttpStatus.UNAUTHORIZED);
+//        }
+//    }
+
 
 
 

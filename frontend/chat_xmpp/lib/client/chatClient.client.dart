@@ -32,6 +32,19 @@ class ChatClient {
     }
   }
 
+  Future<User> getUserDetails(String userName, String userJid) async {
+    final url =
+        Uri.parse("$baseUrl/getUserDetail?username=$userName&userJid=$userJid");
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final jsonResponse = jsonDecode(response.body);
+      return User.fromJson(jsonResponse);
+    } else {
+      throw Exception('Failed to load user details');
+    }
+  }
+
   Future<List<User>> searchContact(String userName, String searchTerm) async {
     final url = Uri.parse(
         "$baseUrl/searchAndAddContact?username=$userName&searchTerm=$searchTerm");
@@ -77,6 +90,59 @@ class ChatClient {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to load searchContact');
+    }
+  }
+
+  Future<bool> createGroupChat(
+      String username, String groupName, String nickname) async {
+    final url = Uri.parse(
+        '$baseUrl/createGroupChat?username=$username&chatRoomName=$groupName&nickname=$nickname');
+    final response = await http.post(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load searchContact');
+    }
+    return response.statusCode == 200;
+  }
+
+  Future<bool> inviteToGroupChat(
+      String username, String groupName, String userToInvite) async {
+    final url = Uri.parse(
+        '$baseUrl/inviteToGroupChat?username=$username&groupName=$groupName&user=$userToInvite');
+    final response = await http.post(url);
+
+    return response.statusCode == 200;
+  }
+
+  Future<bool> joinGroupChat(
+      String username, String groupName, String nickname) async {
+    final url = Uri.parse(
+        '$baseUrl/joinGroupChat?username=$username&chatRoomName=$groupName&nickname=$nickname');
+    final response = await http.post(url);
+
+    return response.statusCode == 200;
+  }
+
+  Future<List<String>> useGroupChat(String username, String groupName) async {
+    final url = Uri.parse(
+        '$baseUrl/useGroupChat?username=$username&chatRoomName=$groupName');
+    final response = await http.post(url);
+
+    if (response.statusCode == 200) {
+      List<dynamic> messageJson = jsonDecode(response.body);
+      return List<String>.from(messageJson.map((msg) => msg.toString()));
+    } else {
+      throw Exception('Failed to load message history');
+    }
+  }
+
+  Future<void> sendGroupMessage(
+      String username, String groupName, String message) async {
+    final url = Uri.parse(
+        '$baseUrl/sendGroupMessage?username=$username&chatRoomName=$groupName&message=$message');
+    final response = await http.post(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load message history');
     }
   }
 

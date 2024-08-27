@@ -315,6 +315,7 @@ public class Connection {
         reconnectionManager = ReconnectionManager.getInstanceFor(connection);
         // If the connection fails, the app is enabled to reconnect automatically.
         reconnectionManager.enableAutomaticReconnection();
+        System.out.printf("initilzie");
     }
 
     /**
@@ -834,6 +835,7 @@ public class Connection {
             if (senderJid != null) {
                 String sender = senderJid.toString();
                 String message = sender + ": " + body;
+
                 // Here we chose a different color to save the message in history depending on if it was from the current user or other users in the chat
                 if (sender.equals(nickname)) {
                     addMessageToGroupHistory(roomName, green + message + reset);
@@ -878,6 +880,8 @@ public class Connection {
             multiUserChatManager = MultiUserChatManager.getInstanceFor(connection);
             // It is needed to specify to the server that we are creating a group chat.
             String roomName = chatRoomName + "@conference.alumchat.lol";
+            System.out.printf(roomName);
+            System.out.printf(nickname);
             EntityBareJid roomJid = JidCreate.entityBareFrom(roomName);
             MultiUserChat muc = multiUserChatManager.getMultiUserChat(roomJid);
             Resourcepart resource = Resourcepart.from(nickname);
@@ -889,6 +893,7 @@ public class Connection {
             newCredentialGroupChat(roomName, muc);
             System.out.println("Hemos creado el grupo con éxito.");
         } catch (Exception e) {
+            e.printStackTrace();
             System.out.println("Algo salió mal. No pudimos crear el grupo :(");
         }
     }
@@ -998,6 +1003,55 @@ public class Connection {
                     sendGroupMessage(message, muc);
                 }
             }
+        }
+    }
+
+    /**
+     * This method retrieves the message history for a group chat.
+     * @param chatRoomName the group chat name.
+     * @return the list of messages in the group chat.
+     */
+    public List<String> getGroupChatHistory(String chatRoomName) {
+        String roomName = chatRoomName + "@conference.alumchat.lol";
+        List<String> history = new ArrayList<>();
+        if (groupChatCredentials.containsKey(roomName)) {
+            // Retrieve message history from stored messages.
+            if (groupMessages.containsKey(roomName)) {
+                history = groupMessages.get(roomName);
+            }
+        }
+        return history;
+    }
+
+    /**
+     * This method sends a message to a group chat.
+     * @param chatRoomName the group chat name.
+     * @param message the message to be sent.
+     */
+    public void sendGroupMessage(String chatRoomName, String message) {
+        String roomName = chatRoomName + "@conference.alumchat.lol";
+        if (groupChatCredentials.containsKey(roomName)) {
+            MultiUserChat muc = groupChatCredentials.get(roomName);
+            sendGroupMessageToChat(message, muc);
+            // Optionally store the message locally if you want to keep a history
+            addMessageToGroupHistory(roomName, "You: " + message);
+        }
+    }
+
+    /**
+     * This method sends a message to the group chat object.
+     * @param messageText the message to be sent.
+     * @param muc the multiuser chat object to send the message.
+     */
+    private void sendGroupMessageToChat(String messageText, MultiUserChat muc) {
+        try {
+            Message message = new Message();
+            message.setBody(messageText);
+            message.setType(Message.Type.groupchat);
+            muc.sendMessage(message);
+        } catch (Exception e) {
+            System.out.println(red + "\nNo pudimos enviar tu mensaje :(\n" + reset);
+            System.out.print("> ");
         }
     }
 

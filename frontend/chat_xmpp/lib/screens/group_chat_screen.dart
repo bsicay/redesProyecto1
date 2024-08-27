@@ -6,16 +6,16 @@ import 'package:chat_xmpp/models/user_model.dart';
 import 'package:chat_xmpp/client/chatClient.client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ChatScreen extends StatefulWidget {
-  final User user;
+class GroupChatScreen extends StatefulWidget {
+  final String groupName;
 
-  ChatScreen({required this.user});
+  GroupChatScreen({required this.groupName});
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  _GroupChatScreenState createState() => _GroupChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _GroupChatScreenState extends State<GroupChatScreen> {
   final ChatClient _chatClient = ChatClient();
   List<String> _messages = [];
   Timer? _timer;
@@ -46,17 +46,33 @@ class _ChatScreenState extends State<ChatScreen> {
     username = prefs.getString('username') ?? '';
     _messages.clear();
     final messageHistory =
-        await _chatClient.getMessageHistory(username, widget.user.userJid);
+        await _chatClient.useGroupChat(username, widget.groupName);
 
     // Aplicar la eliminación de secuencias ANSI a cada mensaje
-    List<String> cleanMessages = messageHistory.map((message) {
-      return _removeAnsiEscapeCodes(message);
-    }).toList();
+    List<String> processedMessages = processMessages(messageHistory);
 
     setState(() {
       // Almacenar los mensajes en orden inverso (para mostrar los más recientes primero)
-      _messages = cleanMessages.reversed.toList();
+      _messages = processedMessages.reversed.toList();
     });
+  }
+
+  List<String> processMessages(List<String> messages) {
+    Set<String> uniqueMessages = {}; // Para almacenar mensajes únicos
+    List<String> filteredMessages = [];
+
+    for (String message in messages) {
+      // Eliminar el código de color ANSI antes de comprobar si el mensaje es único
+      String cleanedMessage = _removeAnsiEscapeCodes(message);
+
+      // Comprobar si el mensaje no contiene 'null' y no está duplicado
+      if (!cleanedMessage.contains('null') &&
+          uniqueMessages.add(cleanedMessage)) {
+        filteredMessages.add(cleanedMessage);
+      }
+    }
+
+    return filteredMessages;
   }
 
 // Función para eliminar las secuencias de escape ANSI
@@ -69,7 +85,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final prefs = await SharedPreferences.getInstance();
     String? username = prefs.getString('username');
     if (username != null) {
-      await _chatClient.sendMessage(username, widget.user.userJid, message);
+      await _chatClient.sendGroupMessage(username, widget.groupName, message);
     }
   }
 
@@ -157,31 +173,14 @@ class _ChatScreenState extends State<ChatScreen> {
       appBar: AppBar(
         backgroundColor: Colors.red,
         title: Text(
-          widget.user.name.split('@')[0],
+          widget.groupName,
           style: TextStyle(
             fontSize: 28.0,
             fontWeight: FontWeight.bold,
           ),
         ),
         elevation: 0.0,
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.more_horiz),
-            iconSize: 30.0,
-            color: Colors.white,
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserDetailScreen(
-                    userName: username,
-                    userJid: widget.user.userJid,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+        actions: <Widget>[],
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),

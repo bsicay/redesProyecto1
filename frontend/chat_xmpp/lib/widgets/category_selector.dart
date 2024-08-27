@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 
+int selectedIndex = 0;
+
 class CategorySelector extends StatefulWidget {
   @override
   _CategorySelectorState createState() => _CategorySelectorState();
 }
 
 class _CategorySelectorState extends State<CategorySelector> {
-  int selectedIndex = 0;
-  final List<String> categories = ['Messages', 'Online', 'Groups', 'Requests'];
+  final List<String> categories = ['Messages', 'Groups', 'Requests'];
 
   @override
   Widget build(BuildContext context) {
