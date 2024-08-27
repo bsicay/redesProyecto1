@@ -429,29 +429,32 @@ public class Connection {
      * This method gets the details of a contact.
      * @param user user to get details from.
      */
-    public void getUserDetails(String user) {
+    public User getUserDetail(String user) {
+        User userDetails = null;
+
         try {
             Jid jid = JidCreate.from(user);
-            System.out.println(jid);
-
             RosterEntry entry = roster.getEntry(jid.asBareJid());
-            if (entry != null) {
-                System.out.println("User's JID: " + entry.getJid());
 
+            if (entry != null) {
+                String name = (entry.getName() != null) ? entry.getName() : entry.getUser();
+                String userJid = entry.getUser();
                 Presence presence = roster.getPresence(jid.asBareJid());
-                if (presence.isAvailable()) {
-                    System.out.println("Status: Online");
-                } else {
-                    System.out.println("Status: Offline");
-                }
-                System.out.println("Presence mode: " + presence.getMode());
-                System.out.println("Presence type: " + presence.getType());
+
+                String status = presence.isAvailable() ? "Online" : "Offline";
+                String mode = (presence.getMode() != null) ? presence.getMode().name() : "none";
+                String statusMessage = (presence.getStatus() != null) ? presence.getStatus() : "none";
+
+                userDetails = new User(name, userJid, status, mode, statusMessage);
             } else {
                 System.out.println("Usuario no presente en roster.");
             }
         } catch (Exception e) {
             System.out.println("No pudimos obtener el usuario :(");
+            e.printStackTrace();
         }
+
+        return userDetails;
     }
 
     /**
@@ -1100,7 +1103,7 @@ public class Connection {
                         messages.get(chat.getXmppAddressOfChatPartner().toString()).add(blue + "User: " + message.getBody() + reset);
                     } else {
                         ArrayList<String> userMessages = new ArrayList<String>();
-                        userMessages.add(blue + "User: " + message.getBody() + reset);
+                        userMessages.add( "User: " + message.getBody() + reset);
                         messages.put(chat.getXmppAddressOfChatPartner().toString(), userMessages);
                     }
                     System.out.println("Mensaje guardado de " +  message.getBody());

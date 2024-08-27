@@ -41,8 +41,8 @@ class FavoriteContacts extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            height: 120.0,
+          SizedBox(
+            height: 140.0,
             child: ListView.builder(
               padding: const EdgeInsets.only(left: 10.0),
               scrollDirection: Axis.horizontal,
@@ -71,6 +71,15 @@ class FavoriteContacts extends StatelessWidget {
                           style: const TextStyle(
                             color: Colors.blueGrey,
                             fontSize: 16.0,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 0.0),
+                        Text(
+                          userData[index].mode,
+                          style: const TextStyle(
+                            color: Colors.blueGrey,
+                            fontSize: 14.0,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

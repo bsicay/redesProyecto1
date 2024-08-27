@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:chat_xmpp/models/message_model.dart';
 import 'package:chat_xmpp/models/user_model.dart';
+import 'package:chat_xmpp/client/chatClient.client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatScreen extends StatefulWidget {
   final User user;
@@ -12,7 +15,79 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  _buildMessage(Message message, bool isMe) {
+  final ChatClient _chatClient = ChatClient();
+  List<String> _messages = [];
+  Timer? _timer;
+  final TextEditingController _messageController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+    _loadMessageHistory();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startPolling() {
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      _loadMessageHistory();
+    });
+  }
+
+  Future<void> _fetchMessages() async {
+    _messages.clear();
+    final prefs = await SharedPreferences.getInstance();
+    String? username = prefs.getString('username');
+
+    if (username != null) {
+      final newMessages =
+          await _chatClient.getMessageHistory(username, widget.user.userJid);
+      setState(() {
+        _messages.addAll(newMessages);
+      });
+    }
+  }
+
+  Future<void> _loadMessageHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? username = prefs.getString('username');
+    _messages.clear();
+    if (username != null) {
+      final messageHistory =
+          await _chatClient.getMessageHistory(username, widget.user.userJid);
+
+      // Aplicar la eliminación de secuencias ANSI a cada mensaje
+      List<String> cleanMessages = messageHistory.map((message) {
+        return _removeAnsiEscapeCodes(message);
+      }).toList();
+
+      setState(() {
+        // Almacenar los mensajes en orden inverso (para mostrar los más recientes primero)
+        _messages = cleanMessages.reversed.toList();
+      });
+    }
+  }
+
+// Función para eliminar las secuencias de escape ANSI
+  String _removeAnsiEscapeCodes(String input) {
+    final ansiEscapePattern = RegExp(r'\x1B\[[0-?]*[ -/]*[@-~]');
+    return input.replaceAll(ansiEscapePattern, '');
+  }
+
+  Future<void> sendMessage(String message) async {
+    final prefs = await SharedPreferences.getInstance();
+    String? username = prefs.getString('username');
+    if (username != null) {
+      await _chatClient.sendMessage(username, widget.user.userJid, message);
+    }
+  }
+
+  Widget _buildMessage(String message, bool isMe) {
     final Container msg = Container(
       margin: isMe
           ? EdgeInsets.only(
@@ -23,6 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
           : EdgeInsets.only(
               top: 8.0,
               bottom: 8.0,
+              right: 80.0,
             ),
       padding: EdgeInsets.symmetric(horizontal: 25.0, vertical: 15.0),
       width: MediaQuery.of(context).size.width * 0.75,
@@ -38,66 +114,30 @@ class _ChatScreenState extends State<ChatScreen> {
                 bottomRight: Radius.circular(15.0),
               ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            message.time,
-            style: TextStyle(
-              color: Colors.blueGrey,
-              fontSize: 16.0,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: 8.0),
-          Text(
-            message.text,
-            style: TextStyle(
-              color: Colors.blueGrey,
-              fontSize: 16.0,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+      child: Text(
+        message.replaceFirst("You: ", ""),
+        style: TextStyle(
+          color: Colors.blueGrey,
+          fontSize: 16.0,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
-    if (isMe) {
-      return msg;
-    }
-    return Row(
-      children: <Widget>[
-        msg,
-        IconButton(
-          icon: message.isLiked
-              ? Icon(Icons.favorite)
-              : Icon(Icons.favorite_border),
-          iconSize: 30.0,
-          color: message.isLiked
-              ? Theme.of(context).primaryColor
-              : Colors.blueGrey,
-          onPressed: () {},
-        )
-      ],
-    );
+
+    return msg;
   }
 
-  _buildMessageComposer() {
+  Widget _buildMessageComposer() {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8.0),
       height: 70.0,
       color: Colors.white,
       child: Row(
         children: <Widget>[
-          IconButton(
-            icon: Icon(Icons.photo),
-            iconSize: 25.0,
-            color: Theme.of(context).primaryColor,
-            onPressed: () {},
-          ),
           Expanded(
             child: TextField(
+              controller: _messageController,
               textCapitalization: TextCapitalization.sentences,
-              onChanged: (value) {},
               decoration: InputDecoration.collapsed(
                 hintText: 'Send a message...',
               ),
@@ -107,7 +147,17 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: Icon(Icons.send),
             iconSize: 25.0,
             color: Theme.of(context).primaryColor,
-            onPressed: () {},
+            onPressed: () async {
+              String message = _messageController.text;
+              if (message.isNotEmpty) {
+                _messageController.clear();
+                sendMessage(message);
+                // setState(() {
+                //   _messages.insert(0, "You: $message");
+                // });
+                // Optionally, you can send the message to the server here
+              }
+            },
           ),
         ],
       ),
@@ -119,8 +169,9 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).primaryColor,
       appBar: AppBar(
+        backgroundColor: Colors.red,
         title: Text(
-          widget.user.name,
+          widget.user.name.split('@')[0],
           style: TextStyle(
             fontSize: 28.0,
             fontWeight: FontWeight.bold,
@@ -154,16 +205,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     topLeft: Radius.circular(30.0),
                     topRight: Radius.circular(30.0),
                   ),
-                  // child: ListView.builder(
-                  //   reverse: true,
-                  //   padding: EdgeInsets.only(top: 15.0),
-                  //   itemCount: messages.length,
-                  //   itemBuilder: (BuildContext context, int index) {
-                  //     final Message message = messages[index];
-                  //     // final bool isMe = message.sender.id == currentUser.id;
-                  //     // return _buildMessage(message, isMe);
-                  //   },
-                  // ),
+                  child: ListView.builder(
+                    reverse: true,
+                    padding: EdgeInsets.only(top: 15.0),
+                    itemCount: _messages.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final String message = _messages[index];
+                      final bool isMe = message.startsWith("You: ");
+                      return _buildMessage(message, isMe);
+                    },
+                  ),
                 ),
               ),
             ),

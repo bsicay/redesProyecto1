@@ -45,16 +45,47 @@ class ChatClient {
     }
   }
 
-  Future<List<User>> addContact(String userName, String searchTerm) async {
+  Future<void> addContact(String userName, String searchTerm) async {
     final url = Uri.parse(
         "$baseUrl/addContact?username=$userName&contactJid=$searchTerm");
     final response = await http.post(url);
 
-    if (response.statusCode == 200) {
-      List<dynamic> contactJson = jsonDecode(response.body);
-      return contactJson.map((json) => User.fromJson(json)).toList();
-    } else {
+    if (response.statusCode != 200) {
       throw Exception('Failed to load searchContact');
+    }
+  }
+
+  Future<List<String>> getMessageHistory(
+      String userName, String recipient) async {
+    final url = Uri.parse(
+        "$baseUrl/chatWithUser?username=$userName&recipient=$recipient");
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List<dynamic> messageJson = jsonDecode(response.body);
+      return List<String>.from(messageJson.map((msg) => msg.toString()));
+    } else {
+      throw Exception('Failed to load message history');
+    }
+  }
+
+  Future<void> sendMessage(
+      String userName, String recipent, String message) async {
+    final url = Uri.parse(
+        "$baseUrl/sendMessage?username=$userName&recipient=$recipent&message=$message");
+    final response = await http.post(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load searchContact');
+    }
+  }
+
+  Future<void> logout(String userName) async {
+    final url = Uri.parse("$baseUrl/logout?username=$userName");
+    final response = await http.post(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load logout');
     }
   }
 }

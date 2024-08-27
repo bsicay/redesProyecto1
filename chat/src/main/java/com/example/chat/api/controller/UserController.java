@@ -39,6 +39,14 @@ public class UserController {
 
     @PostMapping("/logout")
     public ResponseEntity<Map<String, Object>> logout(@RequestParam String username) {
+        Connection connection = sessionManager.getConnection(username);
+
+        if (connection != null) {
+            connection.logout();
+
+        } else {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
         sessionManager.removeConnection(username);
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
@@ -135,6 +143,23 @@ public class UserController {
             return new ResponseEntity<>("Failed to send subscription request", HttpStatus.UNAUTHORIZED);
         }
     }
+
+
+    @GetMapping("/getUserDetail")
+    public ResponseEntity<User> getUserDetail(@RequestParam String username, @RequestParam String userJid) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            User userDetails = connection.getUserDetail(userJid);
+            if (userDetails != null) {
+                return new ResponseEntity<>(userDetails, HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+        } else {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
 
 
 
