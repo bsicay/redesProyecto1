@@ -26,14 +26,13 @@ class _MyAppState extends State<MyApp> {
 
     setState(() {
       _isCustomerSet = isCustomerSet;
-      _isLoading = false; // La carga ha terminado
+      _isLoading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      // Mientras se verifica, mostramos un indicador de carga
       return const MaterialApp(
         home: Scaffold(
           body: Center(

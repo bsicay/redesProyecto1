@@ -31,4 +31,30 @@ class ChatClient {
       throw Exception('Failed to load roster');
     }
   }
+
+  Future<List<User>> searchContact(String userName, String searchTerm) async {
+    final url = Uri.parse(
+        "$baseUrl/searchAndAddContact?username=$userName&searchTerm=$searchTerm");
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List<dynamic> contactJson = jsonDecode(response.body);
+      return contactJson.map((json) => User.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load searchContact');
+    }
+  }
+
+  Future<List<User>> addContact(String userName, String searchTerm) async {
+    final url = Uri.parse(
+        "$baseUrl/addContact?username=$userName&contactJid=$searchTerm");
+    final response = await http.post(url);
+
+    if (response.statusCode == 200) {
+      List<dynamic> contactJson = jsonDecode(response.body);
+      return contactJson.map((json) => User.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load searchContact');
+    }
+  }
 }

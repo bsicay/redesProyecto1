@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chat_xmpp/widgets/category_selector.dart';
 import 'package:chat_xmpp/widgets/favorite_contacts.dart';
 import 'package:chat_xmpp/widgets/recent_chats.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../client/chatClient.client.dart';
 import '../models/user_model.dart';
@@ -32,7 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> fetchRoster() async {
-    final response = await _chatClient.getRoster('sic21757-test10');
+    final prefs = await SharedPreferences.getInstance();
+
+    String? username = prefs.getString('username');
+    final response = await _chatClient.getRoster(username ?? 'sic21757-test10');
     if (response.isNotEmpty) {
       setState(() {
         userData = response;
@@ -47,13 +51,13 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.red,
         leading: IconButton(
-          icon: Icon(Icons.menu),
+          icon: const Icon(Icons.menu),
           iconSize: 27.0,
           color: Colors.white,
           onPressed: () {},
         ),
         centerTitle: true,
-        title: Text(
+        title: const Text(
           'Chats',
           textAlign: TextAlign.left,
           style: TextStyle(
@@ -64,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0.0,
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.search),
+            icon: const Icon(Icons.search),
             iconSize: 27.0,
             color: Colors.white,
             onPressed: () {},
@@ -78,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).accentColor,
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(30.0),
                   topRight: Radius.circular(30.0),
                 ),
