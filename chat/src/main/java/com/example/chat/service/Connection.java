@@ -1,8 +1,6 @@
 package com.example.chat.service;
 import com.example.chat.api.model.User;
-import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
-
 import org.jivesoftware.smack.*;
 import org.jivesoftware.smack.chat2.Chat;
 import org.jivesoftware.smack.chat2.ChatManager;
@@ -11,9 +9,9 @@ import org.jivesoftware.smack.filter.StanzaFilter;
 import org.jivesoftware.smack.packet.Message;
 import org.jivesoftware.smack.packet.Presence;
 import org.jivesoftware.smack.packet.Stanza;
+import org.jivesoftware.smackx.search.ReportedData;
 import org.jivesoftware.smack.roster.Roster;
 import org.jivesoftware.smack.roster.RosterEntry;
-import org.jivesoftware.smack.roster.RosterGroup;
 import org.jivesoftware.smack.roster.RosterListener;
 import org.jivesoftware.smack.tcp.XMPPTCPConnection;
 import org.jivesoftware.smack.tcp.XMPPTCPConnectionConfiguration;
@@ -23,6 +21,11 @@ import org.jivesoftware.smackx.muc.InvitationListener;
 import org.jivesoftware.smackx.muc.MultiUserChat;
 import org.jivesoftware.smackx.muc.MultiUserChatManager;
 import org.jivesoftware.smackx.muc.packet.MUCUser;
+import org.jivesoftware.smackx.search.UserSearchManager;
+import org.jivesoftware.smackx.xdata.form.FillableForm;
+import org.jivesoftware.smackx.xdata.FormField;
+import org.jivesoftware.smackx.xdata.packet.DataForm.Type;
+import org.jivesoftware.smackx.xdata.packet.DataForm;
 import org.jxmpp.jid.BareJid;
 import org.jxmpp.jid.EntityBareJid;
 import org.jxmpp.jid.EntityJid;
@@ -30,14 +33,9 @@ import org.jxmpp.jid.Jid;
 import org.jxmpp.jid.impl.JidCreate;
 import org.jxmpp.jid.parts.Localpart;
 import org.jxmpp.jid.parts.Resourcepart;
-import org.jivesoftware.smackx.search.UserSearchManager;
-import org.jivesoftware.smackx.search.ReportedData;
-//import org.jivesoftware.smackx.xdata.DataForm;
-import org.jivesoftware.smackx.xdata.Form;
 import org.jivesoftware.smackx.disco.ServiceDiscoveryManager;
 import org.jivesoftware.smackx.disco.packet.DiscoverItems;
-import org.springframework.stereotype.Service;
-import org.jxmpp.jid.Jid;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -162,6 +160,24 @@ public class Connection {
 
     }
 
+    public List<String> getAllMessages() {
+        List<String> allMessages = new ArrayList<>();
+
+        try {
+            semaphore.acquire();
+            for (Map.Entry<String, ArrayList<String>> entry : messages.entrySet()) {
+                System.out.println(entry);
+                allMessages.addAll(entry.getValue());
+            }
+            semaphore.release();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return allMessages;
+    }
+
+
     /**
      * This method handles the notifications of subscriptions received.
      */
@@ -201,7 +217,6 @@ public class Connection {
      * This method creates a listener to identify when a user has changed their status.
      */
     private void createRosterListener() {
-        // The boilerplate of the listener was suggested by ChatGPT.
         roster.addRosterListener(new RosterListener() {
             @Override
             public void entriesAdded(Collection<Jid> addresses) {
@@ -256,7 +271,6 @@ public class Connection {
      * This method handles events of errors in the connection
      */
     private void createConnectionErrorListener() {
-        // The boilerplate of the listener was suggested by ChatGPT.
         connection.addConnectionListener(new ConnectionListener() {
             @Override
             public void connected(XMPPConnection connection) {
@@ -344,7 +358,7 @@ public class Connection {
             resetChatManager();
             return 0;
         } catch (Exception e) {
-            // e.printStackTrace();
+             e.printStackTrace();
             System.out.println("Credenciales invalidas. No puedes iniciar sesion");
             return -1;
         }
@@ -398,22 +412,17 @@ public class Connection {
 
     /**
      * This method sends a subscription to a user.
-     * @param user user to send subscription to
+     * @param userJid user to send subscription to
      */
-    public void sendSubscription(String user) {
+    public void sendSubscription(String userJid) {
         try {
-            // A new presence stanza is created.
             Presence presence = new Presence(Presence.Type.subscribe);
-            BareJid userJid = JidCreate.bareFrom(user);
-            System.out.println(userJid);
-            // We set the JID which the presence is intended to.
-            presence.setTo(userJid);
+            presence.setTo(JidCreate.bareFrom(userJid));
             connection.sendStanza(presence);
-            Thread.sleep(400);
+            System.out.println("Subscription request sent to: " + userJid);
         } catch (Exception e) {
-            System.out.println("No pudimos enviar tu solicitud de suscripción. Prueba de nuevo.");
+            System.out.println("Failed to send subscription request: " + e.getMessage());
         }
-
     }
 
     /**
@@ -476,25 +485,47 @@ public class Connection {
         return userList;
     }
 
-
-    public List<String> searchUsers(String searchTerm) {
-        List<String> users = new ArrayList<>();
+    public List<User> searchUsers(String searchTerm) {
+        List<User> foundUsers = new ArrayList<>();
         try {
             UserSearchManager searchManager = new UserSearchManager(connection);
-            String searchService = "search." + connection.getXMPPServiceDomain();
-            DataForm searchForm = searchManager.getSearchForm(searchService);
-            DataForm answerForm = searchForm.createAnswerForm();
-            answerForm.setAnswer("user", searchTerm);
-            ReportedData data = searchManager.getSearchResults(answerForm, searchService);
+            System.out.println(searchTerm);
+            // Get the form and create an answer form
+            DataForm searchForm = searchManager.getSearchForm(JidCreate.domainBareFrom("search.alumchat.lol"));
+            DataForm.Builder answerFormBuilder = DataForm.builder();
+            answerFormBuilder.setType(Type.submit);
+
+            // Set search criteria
+            // Correctly using FormField for boolean values and text
+            answerFormBuilder.addField(FormField.hiddenBuilder("Username").setValue("true").build());
+            answerFormBuilder.addField(FormField.hiddenBuilder("Email").setValue("true").build());
+            answerFormBuilder.addField(FormField.textSingleBuilder("search").setValue(searchTerm).build());
+
+            ReportedData data = searchManager.getSearchResults(answerFormBuilder.build(), JidCreate.domainBareFrom("search.alumchat.lol"));
+            Roster roster = Roster.getInstanceFor(connection);
+
 
             for (ReportedData.Row row : data.getRows()) {
-                String jid = row.getValues("jid").get(0).toString();
-                users.add(jid);
+                System.out.println(row);
+                BareJid userJid = (BareJid)row.getValues("jid").get(0);
+                String userName = (String) row.getValues("Username").get(0);
+                String userEmail = (String) row.getValues("Email").get(0);
+
+//                BareJid jid = JidCreate.bareFrom(row.getValues("jid").get(0));
+                Presence presence = Roster.getInstanceFor(connection).getPresence(userJid);
+
+                String status = presence.isAvailable() ? "Online" : "Offline";
+                String mode = (presence.getMode() != null) ? presence.getMode().name() : "none";
+                String statusMessage = (presence.getStatus() != null) ? presence.getStatus() : "none";
+
+                User newUser = new User(userName,userJid.toString(), status, mode, statusMessage);
+                foundUsers.add(newUser);
+                System.out.println("User found: JID=" + userJid + ", Username=" + userName + ", Email=" + userEmail + ", Status=" + status + ", Mode=" + mode + ", Status Message=" + statusMessage);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println("Error searching users: " + e.getMessage());
         }
-        return users;
+        return foundUsers;
     }
 
     public List<String> discoverServices() {
@@ -511,7 +542,6 @@ public class Connection {
         }
         return services;
     }
-
     /**
      * This method gets a presence mode depending on a number option.
      * @param option option of the mode selected by user.
@@ -592,7 +622,7 @@ public class Connection {
      * @param user the user to send the message to.
      * @param message the message to be sent.
      */
-    private void sendMessage(String user, String message) {
+    public void sendMessage(String user, String message) {
         try {
             ChatManager chatManager = ChatManager.getInstanceFor(connection);
             Chat chat = chatManager.chatWith(JidCreate.from(user).asEntityBareJidIfPossible());
@@ -626,7 +656,7 @@ public class Connection {
      * This method adds a user to the chat history dictionary.
      * @param userJID the user to chat with.
      */
-    private void addUserToChatHistory(String userJID) throws Exception {
+    public void addUserToChatHistory(String userJID) throws Exception {
         if (!messages.containsKey(userJID)) {
             try {
                 semaphore.acquire();
@@ -671,12 +701,43 @@ public class Connection {
         System.out.println(screenCleaner);
     }
 
+    public List<String> getMessageHistory(String userJID) {
+        List<String> messageHistory = new ArrayList<>();
+        try {
+            semaphore.acquire();
+            if (messages.containsKey(userJID)) {
+                messageHistory = new ArrayList<>(messages.get(userJID));
+            }
+            semaphore.release();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return messageHistory;
+    }
+
+    public void addMessageToHistory(String userJID, String message) {
+        try {
+            semaphore.acquire();
+            if (messages.containsKey(userJID)) {
+                messages.get(userJID).add(message);
+            } else {
+                ArrayList<String> userMessages = new ArrayList<>();
+                userMessages.add(message);
+                messages.put(userJID, userMessages);
+            }
+            semaphore.release();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+
     /**
      * This method converts files to base64 to send them through messages.
      * @param filePath
      */
     private String convertToBase64 (String filePath) {
-        // ChatGPT showed me how to convert a file to base64.
         try {
             byte[] fileBytes = Files.readAllBytes(Paths.get(filePath));
             return Base64.getEncoder().encodeToString(fileBytes);
@@ -1017,8 +1078,6 @@ public class Connection {
          */
         @Override
         public void newIncomingMessage(EntityBareJid entityBareJid, Message message, Chat chat) {
-            // ChatGPT showed me a basic usage of the listener. Albeit he showed me a slightly different listener, deprecated actually,
-            // I managed to build this one.
             if (message.getBody().length() > 4 && message.getBody().substring(0, 4).equals("file")) {
                 if (isFileFormatCorrect(message.getBody())) {
                     System.out.println(yellow + "File received from: " + chat.getXmppAddressOfChatPartner().toString() + reset);
@@ -1044,9 +1103,11 @@ public class Connection {
                         userMessages.add(blue + "User: " + message.getBody() + reset);
                         messages.put(chat.getXmppAddressOfChatPartner().toString(), userMessages);
                     }
+                    System.out.println("Mensaje guardado de " +  message.getBody());
+
                     semaphore.release();
                 } catch (Exception e) {
-                    // e.printStackTrace();
+                     e.printStackTrace();
                 }
             }
         }
