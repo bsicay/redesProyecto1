@@ -5,11 +5,9 @@ import com.example.chat.api.model.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 @RestController
@@ -102,19 +100,32 @@ public class UserController {
     }
 
     @PostMapping("/sendMessage")
-    public ResponseEntity<String> sendMessage(@RequestParam String username,
-                                              @RequestParam String recipient,
-                                              @RequestParam String message) throws Exception {
+    public ResponseEntity<String> sendMessage(
+            @RequestParam String username,
+            @RequestParam String recipient,
+            @RequestParam(required = false) String message,
+            @RequestParam(required = false) String filePath) throws Exception {
+
         Connection connection = sessionManager.getConnection(username);
+
         if (connection != null) {
             connection.addUserToChatHistory(recipient);
-            connection.sendMessage(recipient, message);
-            connection.addMessageToHistory(recipient, "You: " + message);
+
+            if (filePath != null && !filePath.isEmpty()) {
+                connection.sendFile(recipient, filePath);
+            } else if (message != null && !message.isEmpty()) {
+                connection.sendMessage(recipient, message);
+                connection.addMessageToHistory(recipient, "You: " + message);
+            } else {
+                return new ResponseEntity<>("No message or file provided", HttpStatus.BAD_REQUEST);
+            }
+
             return new ResponseEntity<>("Message sent successfully", HttpStatus.OK);
         } else {
             return new ResponseEntity<>("Failed to send message", HttpStatus.UNAUTHORIZED);
         }
     }
+
 
 
     @GetMapping("/searchAndAddContact")
@@ -223,6 +234,50 @@ public class UserController {
             return new ResponseEntity<>("Message sent successfully", HttpStatus.OK);
         } else {
             return new ResponseEntity<>("Failed to send message", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @GetMapping("/presence-options")
+    public ResponseEntity<Map<String, List<String>>> getPresenceOptions() {
+        Map<String, List<String>> options = new HashMap<>();
+
+        // Opciones para el tipo de presencia
+        List<String> presenceTypes = Arrays.asList("Disponible", "No disponible");
+        // Opciones para el modo de presencia
+        List<String> presenceModes = Arrays.asList("Available", "Away", "Chat", "Extended away", "Do not disturb");
+
+        options.put("types", presenceTypes);
+        options.put("modes", presenceModes);
+
+        return new ResponseEntity<>(options, HttpStatus.OK);
+    }
+
+    @PostMapping("/set-status-message")
+    public ResponseEntity<String> setStatusMessage(@RequestParam String username,
+                                                   @RequestParam String message,
+                                                   @RequestParam String type,
+                                                   @RequestParam String mode) {
+        Connection connection = sessionManager.getConnection(username);
+
+        if (connection != null) {
+            String[] data = new String[]{message, type, mode};
+            connection.setStatusMessage(data);
+            return new ResponseEntity<>("Status modified successfully", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Failed to modify status", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @GetMapping("/notifications")
+    public ResponseEntity<List<String>> getNotifications(@RequestParam String username) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            ConcurrentLinkedQueue<String> notifications = connection.getNotificationQueue();
+            List<String> notificationList = new ArrayList<>(notifications);
+            notifications.clear(); // Clear notifications after sending them
+            return new ResponseEntity<>(notificationList, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 

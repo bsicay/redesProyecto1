@@ -6,7 +6,7 @@ import '../models/user_model.dart';
 class ChatClient {
   final String baseUrl;
 
-  ChatClient({this.baseUrl = "http://192.168.0.3:8080/api"});
+  ChatClient({this.baseUrl = "http://10.100.0.168:8080/api"});
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     final url =
@@ -82,14 +82,27 @@ class ChatClient {
     }
   }
 
-  Future<void> sendMessage(
-      String userName, String recipent, String message) async {
-    final url = Uri.parse(
-        "$baseUrl/sendMessage?username=$userName&recipient=$recipent&message=$message");
-    final response = await http.post(url);
+  Future<List<String>> fetchNotifications(String username) async {
+    final url = Uri.parse('$baseUrl/notifications?username=$username');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      List<dynamic> notificationsJson = jsonDecode(response.body);
+      return List<String>.from(
+          notificationsJson.map((notification) => notification.toString()));
+    } else {
+      throw Exception('Failed to load notifications');
+    }
+  }
+
+  Future<void> sendMessage(String username, String recipient,
+      {String? message, String? filePath}) async {
+    final uri = Uri.parse(
+        '$baseUrl/sendMessage?username=$username&recipient=$recipient&message=$message');
+    final response = await http.post(uri);
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to load searchContact');
+      throw Exception('Failed to send message');
     }
   }
 
@@ -143,6 +156,32 @@ class ChatClient {
 
     if (response.statusCode != 200) {
       throw Exception('Failed to load message history');
+    }
+  }
+
+  Future<Map<String, List<String>>> getPresenceOptions() async {
+    final url = Uri.parse('$baseUrl/presence-options');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      Map<String, dynamic> optionsJson = jsonDecode(response.body);
+      return {
+        "types": List<String>.from(optionsJson["types"]),
+        "modes": List<String>.from(optionsJson["modes"]),
+      };
+    } else {
+      throw Exception('Failed to load presence options');
+    }
+  }
+
+  Future<void> setStatusMessage(
+      String username, String message, String type, String mode) async {
+    final url = Uri.parse(
+        '$baseUrl/set-status-message?username=$username&message=$message&type=$type&mode=$mode');
+    final response = await http.post(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to set status message');
     }
   }
 

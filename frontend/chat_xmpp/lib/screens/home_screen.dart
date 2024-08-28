@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:chat_xmpp/screens/groups_screen.dart';
 import 'package:chat_xmpp/screens/search_screen.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../client/chatClient.client.dart';
 import '../models/user_model.dart';
+import '../widgets/status_presence.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<User> userData = [];
   final List<String> categories = ['Messages', 'Groups', 'Requests'];
   int selectedIndex = 0;
+  String username = '';
 
   @override
   void initState() {
@@ -28,12 +32,64 @@ class _HomeScreenState extends State<HomeScreen> {
     Future.delayed(Duration.zero, () async {
       await fetchRoster();
     });
+
+    Timer.periodic(Duration(seconds: 5), (Timer timer) {
+      _fetchNotifications();
+    });
+  }
+
+  Future<void> _fetchNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    String username = prefs.getString('username') ?? '';
+
+    if (username.isNotEmpty) {
+      try {
+        final notifications = await _chatClient.fetchNotifications(username);
+
+        if (notifications.isNotEmpty) {
+          _showNotificationDialog(notifications);
+        }
+      } catch (e) {
+        print('Failed to fetch notifications: $e');
+      }
+    }
+  }
+
+  void _showNotificationDialog(List<String> notifications) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('New Notifications'),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: notifications.length,
+              itemBuilder: (BuildContext context, int index) {
+                return ListTile(
+                  title: Text(notifications[index]),
+                );
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> fetchRoster() async {
     final prefs = await SharedPreferences.getInstance();
 
-    String? username = prefs.getString('username');
+    username = prefs.getString('username') ?? '';
     final response = await _chatClient.getRoster(username ?? 'sic21757-test10');
     if (response.isNotEmpty) {
       setState(() {
@@ -44,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    String? username = prefs.getString('username');
+    username = prefs.getString('username') ?? '';
 
     if (username != null) {
       await _chatClient.logout(username);
@@ -132,6 +188,19 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             ListTile(
+              leading: Icon(Icons.message),
+              title: Text('Cambiar mensaje de presencia'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        StatusMessageScreen(username: username),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: Icon(Icons.exit_to_app),
               title: Text('Logout'),
               onTap: () async {
@@ -144,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () async {
                 await _deleteAccount();
               },
-            ),
+            )
           ],
         ),
       ),

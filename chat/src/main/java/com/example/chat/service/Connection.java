@@ -35,7 +35,7 @@ import org.jxmpp.jid.parts.Localpart;
 import org.jxmpp.jid.parts.Resourcepart;
 import org.jivesoftware.smackx.disco.ServiceDiscoveryManager;
 import org.jivesoftware.smackx.disco.packet.DiscoverItems;
-
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -76,6 +76,8 @@ public class Connection {
     private boolean stanzaListenerAdded;
     private FileTransferManager fileManager;
     private String alias;
+    private static ConcurrentLinkedQueue<String> notificationQueue = new ConcurrentLinkedQueue<>();
+
 
     /**
      * The constructor of this class initializes objects related to chat history and to receive some inputs from user.
@@ -742,14 +744,31 @@ public class Connection {
      * @param filePath
      */
     private String convertToBase64 (String filePath) {
+        System.out.println(filePath);
         try {
             byte[] fileBytes = Files.readAllBytes(Paths.get(filePath));
             return Base64.getEncoder().encodeToString(fileBytes);
         } catch (IOException e) {
-            // e.printStackTrace();
+             e.printStackTrace();
             System.out.println("Hubo un error al convertir el contenido del archivo a Base64.");
             return null;
         }
+    }
+
+    /**
+     * This method converts a base64 string to a file.
+     * @param filePath the path to save the file.
+     * @param base64String the content of the file.
+     */
+    private static void convertBase64ToFile(String base64String, String filePath) {
+        try {
+            byte[] fileBytes = Base64.getDecoder().decode(base64String);
+            Files.write(Paths.get(filePath), fileBytes);
+            System.out.println(blue + "Hemos guardado el archivo con exito en " + filePath + reset);
+        } catch (IOException e) {
+            System.out.println("No pudimos guardar el archivo porque el formato estaba mal.");
+        }
+        System.out.print("\n> ");
     }
 
     /**
@@ -764,28 +783,31 @@ public class Connection {
         return "";
     }
 
+
     /**
-     * This method allows to send a file as a message.
-     * For the sending of messages a specific format was defined:
-     *      file|extension|file content
+     * This method allows a user to send a file as a message.
+     * The file content is converted to Base64 and sent as a special formatted message.
+     * The format is: file|extension|base64content
      * @param user the user to send the file to.
      * @param path the path to the file the user wants to send.
      */
     public void sendFile(String user, String path) {
         try {
             String fileExtension = getFileExtension(path);
-            // It is needed to check whether the format of the filename is correct.
             if (fileExtension.equals("")) {
-                System.out.println("La ruta de archivo no tiene la extension adecuada. No lo pudimos enviar.");
+                System.out.println("The file path does not have an appropriate extension. We couldn't send it.");
             } else {
                 String fileContent = "file|" + fileExtension + "|" + convertToBase64(path);
                 sendMessage(user, fileContent);
-                System.out.println("Archivo enviado con exito");
+                System.out.println("File sent successfully");
             }
         } catch (Exception e) {
-            System.out.println("Algo salio mal, no pudimos enviar el archivo :(");
+            System.out.println("Something went wrong, we couldn't send the file :(");
         }
     }
+
+
+
 
     /**
      * This method creates a new entry in the dictionary for group chat history.
@@ -980,6 +1002,9 @@ public class Connection {
 
     }
 
+    public ConcurrentLinkedQueue<String> getNotificationQueue() {
+        return notificationQueue;
+    }
     /**
      * This method shows a user a space to chat in a group chat.
      * @param chatRoomName the group chat name.
@@ -1061,31 +1086,33 @@ public class Connection {
      */
     private static class ChatMessageListener implements IncomingChatMessageListener {
         /**
-         * This method converts a base64 string to a file.
-         * @param filePath the path to save the file.
-         * @param base64String the content of the file.
+         * This method converts files to Base64 to send them through messages.
+         * @param filePath the path to the file to be converted.
+         * @return the Base64 encoded file content.
          */
-        private void convertBase64ToFile(String base64String, String filePath) {
+        private String convertToBase64(String filePath) {
             try {
-                byte[] fileBytes = Base64.getDecoder().decode(base64String);
-                Files.write(Paths.get(filePath), fileBytes);
-                System.out.println(blue + "Hemos guardado el archivo con exito en " + filePath + reset);
+                byte[] fileBytes = Files.readAllBytes(Paths.get(filePath));
+                return Base64.getEncoder().encodeToString(fileBytes);
             } catch (IOException e) {
-                System.out.println("No pudimos guardar el archivo porque el formato estaba mal.");
+                System.out.println("There was an error converting the file content to Base64.");
+                return null;
             }
-            System.out.print("\n> ");
         }
+
 
         /**
-         * This method gets the extension of the file sent.
-         * @param message the message received with the extension specified.
-         * @return a string containing the extension of the file.
+         * This method gets the file extension of a file.
+         * @param path the file path from which the extension is needed.
+         * @return the file extension as a string.
          */
-        private String getFileExtension(String message) {
-            String extension = message.split("\\|")[1];
-            return extension;
+        private String getFileExtension(String path) {
+            int lastIndex = path.lastIndexOf(".");
+            if (lastIndex != -1 && lastIndex < path.length() - 1) {
+                return path.substring(lastIndex + 1);
+            }
+            return "";
         }
-
         /**
          * This method creates the filename, by combining the username of the sender and a timestamp.
          * @param message the message sent to get the extension of the file.
@@ -1150,6 +1177,7 @@ public class Connection {
                 System.out.print("> ");
             } else {
                 System.out.println(yellow + "Incoming message from: " + chat.getXmppAddressOfChatPartner() + reset);
+                notificationQueue.add("Incoming message from: " + chat.getXmppAddressOfChatPartner());
                 System.out.print("> ");
                 try {
                     semaphore.acquire();
@@ -1168,5 +1196,7 @@ public class Connection {
                 }
             }
         }
+
+
     }
 }

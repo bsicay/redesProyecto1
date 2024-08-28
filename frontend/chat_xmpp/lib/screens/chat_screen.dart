@@ -1,10 +1,12 @@
 import 'dart:async';
-
+import 'dart:io';
+import 'dart:convert';
 import 'package:chat_xmpp/screens/user_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:chat_xmpp/models/user_model.dart';
 import 'package:chat_xmpp/client/chatClient.client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ChatScreen extends StatefulWidget {
   final User user;
@@ -69,7 +71,43 @@ class _ChatScreenState extends State<ChatScreen> {
     final prefs = await SharedPreferences.getInstance();
     String? username = prefs.getString('username');
     if (username != null) {
-      await _chatClient.sendMessage(username, widget.user.userJid, message);
+      await _chatClient.sendMessage(username, widget.user.userJid,
+          message: message);
+    }
+  }
+
+  void sendFile(String path) async {
+    final prefs = await SharedPreferences.getInstance();
+    String? username = prefs.getString('username');
+    try {
+      // Lee el archivo y conviértelo a base64
+      final bytes = await File(path).readAsBytes();
+      final base64File = base64Encode(bytes);
+      final fileName = path.split('/').last;
+      final fileExtension = fileName.split('.').last;
+
+      // Crea el mensaje en el formato esperado
+      final fileContent = 'file|$fileExtension|$base64File';
+
+      await _chatClient.sendMessage(
+        username ?? '',
+        widget.user.userJid,
+        message: fileContent,
+      );
+      print('File sent successfully');
+    } catch (e) {
+      print('Failed to send file: $e');
+    }
+  }
+
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+    if (result != null) {
+      String? filePath = result.files.single.path;
+      if (filePath != null) {
+        sendFile(filePath);
+      }
     }
   }
 
@@ -120,6 +158,12 @@ class _ChatScreenState extends State<ChatScreen> {
       color: Colors.white,
       child: Row(
         children: <Widget>[
+          IconButton(
+            icon: Icon(Icons.attach_file),
+            iconSize: 25.0,
+            color: Theme.of(context).primaryColor,
+            onPressed: _pickFile,
+          ),
           Expanded(
             child: TextField(
               controller: _messageController,
