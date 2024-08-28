@@ -4,7 +4,7 @@ Welcome to my first project for the **Computer Networks** course at Universidad 
 
 ## Project Overview
 
-This project involves developing a client application using the XMPP chat protocol. The implementation includes various features, which are detailed in the following sections. The client operates via a command-line interface (CLI) and connects to a server with the domain **@alumchat.xyz**.
+This project involves developing a client application using the XMPP chat protocol. The implementation includes various features, which are detailed in the following sections. 
 
 The following tools were utilized in building this project:
 
@@ -15,12 +15,11 @@ The following tools were utilized in building this project:
 
 Java was chosen as the programming language for this project due to its ease of handling asynchronous operations and the availability of supportive libraries. Smack, in particular, stands out as a robust, flexible, and intuitive library for developing XMPP client applications. Maven was employed to manage the project, making the setup straightforward. However, the verbose commands required for compiling the project were a minor drawback, which is why IntelliJ IDEA was used for its seamless integration with Maven, enabling easy project execution with just a click.
 
-You can view the project presentation here: [Presentation](./Presentacion_proyecto.pdf)
 
 ## Features
 
 ### Account Management
-- [X] **Registration**: The client enables users to create a new account on the server. After creating an account, the client automatically logs the user into the chat.
+- [X] **Registration**: The client enables users to create a new account on the server. 
 - [X] **Login**: If a user already has an account, the client prompts for their credentials and then authenticates them with the server, granting access to chat features.
 - [X] **Account Deletion**: Users who wish to remove their account from the server can do so through the client. While this option is not immediately visible in the CLI interface, it is related to account management. It is accessible only when the user is logged in.
 
@@ -32,9 +31,9 @@ You can view the project presentation here: [Presentation](./Presentacion_proyec
 - [X] **Group Chats**: The client supports creating, joining, and participating in group chats.
 - [X] **Update Status**: Users can update their status, choosing whether they are online or not, and setting a status mode and message.
 - [X] **File Transfer**: The client allows users to send files to other users.
+- [X] **Notificationsr**: Realtime notifications.
 - [X] **Logout**: Users can log out of their session on the server.
 
-For detailed code documentation, please refer to the [Javadoc](./Javadoc/index.html).
 
 ## Running the Project
 
