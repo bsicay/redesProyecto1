@@ -113,6 +113,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _delete() async {
+    final prefs = await SharedPreferences.getInstance();
+    username = prefs.getString('username') ?? '';
+
+    if (username != null) {
+      await _chatClient.deleteAccount(username);
+      await prefs.clear();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+        (Route<dynamic> route) => false,
+      );
+    }
+  }
+
   Future<void> _deleteAccount() async {
     final prefs = await SharedPreferences.getInstance();
     String? username = prefs.getString('username');
@@ -205,6 +220,13 @@ class _HomeScreenState extends State<HomeScreen> {
               title: Text('Logout'),
               onTap: () async {
                 await _logout();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.exit_to_app),
+              title: Text('Delete Account'),
+              onTap: () async {
+                await _delete();
               },
             ),
             ListTile(

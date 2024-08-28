@@ -20,6 +20,15 @@ class ChatClient {
     }
   }
 
+  Future<void> deleteAccount(String username) async {
+    final url = Uri.parse("$baseUrl/deleteAccount?username=$username");
+    final response = await http.post(url);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to login');
+    }
+  }
+
   Future<List<User>> getRoster(String userName) async {
     final url = Uri.parse("$baseUrl/roster?username=$userName");
     final response = await http.get(url);
@@ -92,6 +101,18 @@ class ChatClient {
           notificationsJson.map((notification) => notification.toString()));
     } else {
       throw Exception('Failed to load notifications');
+    }
+  }
+
+  Future<bool> register(String username, String password) async {
+    final url = Uri.parse(
+        '$baseUrl/api/register?username=$username&password=$password');
+    final response = await http.post(url);
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      return false;
     }
   }
 

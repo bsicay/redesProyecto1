@@ -281,6 +281,34 @@ public class UserController {
         }
     }
 
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestParam String username, @RequestParam String password) {
+        Connection connection = new Connection(); // Crear una nueva conexión para el registro
+        int result = connection.register(username, password);
+
+        if (result == 0) {
+            return new ResponseEntity<>("User registered successfully", HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Failed to register user", HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    @PostMapping("/deleteAccount")
+    public ResponseEntity<String> deleteAccount(@RequestParam String username) {
+        Connection connection = sessionManager.getConnection(username);
+        if (connection != null) {
+            int result = connection.deleteAccount();
+            if (result == 0) {
+                sessionManager.removeConnection(username);
+                return new ResponseEntity<>("Account deleted successfully", HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>("Failed to delete account", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        } else {
+            return new ResponseEntity<>("Failed to delete account", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
 
 
 //    @PostMapping("/useGroupChat")
